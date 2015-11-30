@@ -1,0 +1,251 @@
+fileFormatVersion: 2
+guid: 2b358fa6624e80446893ecf2f60b4611
+ModelImporter:
+  serializedVersion: 16
+  fileIDToRecycleName:
+    100000: Armature
+    100002: b_lower_arm
+    100004: b_shoulder
+    100006: b_sword
+    100008: b_torso
+    100010: b_upper_arm
+    100012: Knight
+    100014: //RootNode
+    400000: Armature
+    400002: b_lower_arm
+    400004: b_shoulder
+    400006: b_sword
+    400008: b_torso
+    400010: b_upper_arm
+    400012: Knight
+    400014: //RootNode
+    4300000: Knight
+    7400000: Default Take
+    7400002: Idle
+    7400004: Walk
+    7400006: Idle0
+    7400008: Attack
+    9500000: //RootNode
+    13700000: Knight
+  materials:
+    importMaterials: 1
+    materialName: 0
+    materialSearch: 1
+  animations:
+    legacyGenerateAnimations: 4
+    bakeSimulation: 0
+    optimizeGameObjects: 0
+    motionNodeName: 
+    animationCompression: 0
+    animationRotationError: .5
+    animationPositionError: .5
+    animationScaleError: .5
+    animationWrapMode: 0
+    extraExposedTransformPaths: []
+    clipAnimations:
+    - serializedVersion: 16
+      name: Default Take
+      takeName: Default Take
+      firstFrame: 0
+      lastFrame: 49
+      wrapMode: 0
+      orientationOffsetY: 0
+      level: 0
+      cycleOffset: 0
+      loop: 0
+      loopTime: 0
+      loopBlend: 0
+      loopBlendOrientation: 0
+      loopBlendPositionY: 0
+      loopBlendPositionXZ: 0
+      keepOriginalOrientation: 0
+      keepOriginalPositionY: 1
+      keepOriginalPositionXZ: 0
+      heightFromFeet: 0
+      mirror: 0
+      bodyMask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000
+      curves: []
+      events: []
+      transformMask:
+      - path: 
+        weight: 1
+      - path: Armature
+        weight: 1
+      - path: Armature/b_torso
+        weight: 1
+      - path: Armature/b_torso/b_shoulder
+        weight: 1
+      - path: Armature/b_torso/b_shoulder/b_upper_arm
+        weight: 1
+      - path: Armature/b_torso/b_shoulder/b_upper_arm/b_lower_arm
+        weight: 1
+      - path: Armature/b_torso/b_shoulder/b_upper_arm/b_lower_arm/b_sword
+        weight: 1
+      - path: Knight
+        weight: 1
+      maskType: 0
+      maskSource: {instanceID: 0}
+    - serializedVersion: 16
+      name: Idle
+      takeName: Default Take
+      firstFrame: 1
+      lastFrame: 1.10000002
+      wrapMode: 0
+      orientationOffsetY: 0
+      level: 0
+      cycleOffset: 0
+      loop: 0
+      loopTime: 1
+      loopBlend: 0
+      loopBlendOrientation: 0
+      loopBlendPositionY: 0
+      loopBlendPositionXZ: 0
+      keepOriginalOrientation: 0
+      keepOriginalPositionY: 1
+      keepOriginalPositionXZ: 0
+      heightFromFeet: 0
+      mirror: 0
+      bodyMask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000
+      curves: []
+      events: []
+      transformMask:
+      - path: 
+        weight: 1
+      - path: Armature
+        weight: 1
+      - path: Armature/b_torso
+        weight: 1
+      - path: Armature/b_torso/b_shoulder
+        weight: 1
+      - path: Armature/b_torso/b_shoulder/b_upper_arm
+        weight: 1
+      - path: Armature/b_torso/b_shoulder/b_upper_arm/b_lower_arm
+        weight: 1
+      - path: Armature/b_torso/b_shoulder/b_upper_arm/b_lower_arm/b_sword
+        weight: 1
+      - path: Knight
+        weight: 1
+      maskType: 0
+      maskSource: {instanceID: 0}
+    - serializedVersion: 16
+      name: Walk
+      takeName: Walk
+      firstFrame: 0
+      lastFrame: 20
+      wrapMode: 0
+      orientationOffsetY: 0
+      level: 0
+      cycleOffset: 0
+      loop: 0
+      loopTime: 1
+      loopBlend: 0
+      loopBlendOrientation: 0
+      loopBlendPositionY: 0
+      loopBlendPositionXZ: 0
+      keepOriginalOrientation: 0
+      keepOriginalPositionY: 1
+      keepOriginalPositionXZ: 0
+      heightFromFeet: 0
+      mirror: 0
+      bodyMask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000
+      curves: []
+      events: []
+      transformMask:
+      - path: 
+        weight: 1
+      - path: Armature
+        weight: 1
+      - path: Armature/b_torso
+        weight: 1
+      - path: Armature/b_torso/b_shoulder
+        weight: 1
+      - path: Armature/b_torso/b_shoulder/b_upper_arm
+        weight: 1
+      - path: Armature/b_torso/b_shoulder/b_upper_arm/b_lower_arm
+        weight: 1
+      - path: Armature/b_torso/b_shoulder/b_upper_arm/b_lower_arm/b_sword
+        weight: 1
+      - path: Knight
+        weight: 1
+      maskType: 0
+      maskSource: {instanceID: 0}
+    - serializedVersion: 16
+      name: Attack
+      takeName: Default Take
+      firstFrame: 22
+      lastFrame: 38
+      wrapMode: 0
+      orientationOffsetY: 0
+      level: 0
+      cycleOffset: 0
+      loop: 0
+      loopTime: 0
+      loopBlend: 0
+      loopBlendOrientation: 0
+      loopBlendPositionY: 0
+      loopBlendPositionXZ: 0
+      keepOriginalOrientation: 0
+      keepOriginalPositionY: 1
+      keepOriginalPositionXZ: 0
+      heightFromFeet: 0
+      mirror: 0
+      bodyMask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000
+      curves: []
+      events: []
+      transformMask:
+      - path: 
+        weight: 1
+      - path: Armature
+        weight: 1
+      - path: Armature/b_torso
+        weight: 1
+      - path: Armature/b_torso/b_shoulder
+        weight: 1
+      - path: Armature/b_torso/b_shoulder/b_upper_arm
+        weight: 1
+      - path: Armature/b_torso/b_shoulder/b_upper_arm/b_lower_arm
+        weight: 1
+      - path: Armature/b_torso/b_shoulder/b_upper_arm/b_lower_arm/b_sword
+        weight: 1
+      - path: Knight
+        weight: 1
+      maskType: 0
+      maskSource: {instanceID: 0}
+    isReadable: 1
+  meshes:
+    lODScreenPercentages: []
+    globalScale: 1
+    meshCompression: 0
+    addColliders: 0
+    importBlendShapes: 1
+    swapUVChannels: 0
+    generateSecondaryUV: 0
+    useFileUnits: 1
+    optimizeMeshForGPU: 1
+    weldVertices: 1
+    secondaryUVAngleDistortion: 8
+    secondaryUVAreaDistortion: 15.000001
+    secondaryUVHardAngle: 88
+    secondaryUVPackMargin: 4
+  tangentSpace:
+    normalSmoothAngle: 60
+    splitTangentsAcrossUV: 1
+    normalImportMode: 0
+    tangentImportMode: 1
+  importAnimation: 1
+  copyAvatar: 0
+  humanDescription:
+    human: []
+    skeleton: []
+    armTwist: .5
+    foreArmTwist: .5
+    upperLegTwist: .5
+    legTwist: .5
+    armStretch: .0500000007
+    legStretch: .0500000007
+    feetSpacing: 0
+    rootMotionBoneName: 
+  lastHumanDescriptionAvatarSource: {instanceID: 0}
+  animationType: 2
+  additionalBone: 0
+  userData: 
