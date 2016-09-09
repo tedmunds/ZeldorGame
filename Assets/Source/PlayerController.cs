@@ -2,6 +2,7 @@
 
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 [RequireComponent(typeof(CharacterController))]
 public class PlayerController : MonoBehaviour {
@@ -25,6 +26,9 @@ public class PlayerController : MonoBehaviour {
     [SerializeField]
     private AudioClip attackSound;
 
+    [SerializeField]
+    public Renderer meshRenderer;
+
     private CharacterController characterController;
     private PlayerGUI player_ui;
 
@@ -32,7 +36,8 @@ public class PlayerController : MonoBehaviour {
     private const float attackCooldown = 0.5f;
     private const float attackBaseImobilityTime = 0.3f;
 
-    private const float moveSpeed = 3.0f;
+    public const float moveSpeed = 3.0f;
+    public float bonusMoveSpeed = 0.0f;
 
     // Should the game do a freeze frame when the player gets a kill
     private const bool bFreezeFrameOnKill = true;
@@ -66,10 +71,15 @@ public class PlayerController : MonoBehaviour {
     private Animator animator;
     private CachedAnimInfo cachedAnimInfo;
 
+    // Effector functionality: effectors modify player behaviour in some way
+    List<PlayerEffector> effectors; 
+
     public int NumHitsLeft() { return maxHits - timesHit; }
     public int GetPoints() { return points; }
     public int GetHighScore() { return highScore; }
     public float GetLongestGameTime() { return longestGameTime; }
+    public void AddPoints(int p) { points += p; }
+
 
 	void Start () {
 	    characterController = GetComponent<CharacterController>();
@@ -90,6 +100,8 @@ public class PlayerController : MonoBehaviour {
         if(animator != null) {
             cachedAnimInfo = new CachedAnimInfo();
         }
+
+        effectors = new List<PlayerEffector>();
 	}
 
 
@@ -127,7 +139,7 @@ public class PlayerController : MonoBehaviour {
         if(Time.time - lastAttackTime > attackBaseImobilityTime) {
             Vector3 direction = new Vector3(hMag, 0.0f, vMag).normalized;
 
-            Move(direction, moveSpeed);
+            Move(direction, moveSpeed + bonusMoveSpeed);
         }
 
         if(bDoPhysics) {
@@ -159,6 +171,9 @@ public class PlayerController : MonoBehaviour {
             }
         }
 
+        UpdateEffectors();
+
+        // updates the animator params to drive teh state machine
         ApplyCachedAnimInfo();
 
         // Always update high scores constantly
@@ -170,14 +185,6 @@ public class PlayerController : MonoBehaviour {
         if(points > highScore) {
             highScore = points;
         }
-
-        // TODO: Remove debug mode
-#if DEBUG
-        if(Input.GetKeyUp(KeyCode.I)) {
-            // increment points
-            points += 10;
-        }
-#endif
 	}
 
 
@@ -208,7 +215,9 @@ public class PlayerController : MonoBehaviour {
     }
 
 
-
+    /*
+     * Handles damaging the player and all subsequent effects
+     */ 
     public void ReceiveHit(EnemyController instigator) {
         timesHit += 1;
 
@@ -244,6 +253,9 @@ public class PlayerController : MonoBehaviour {
     }
 
 
+    /*
+     * Starts an attack that lasts for some amount of time, performing DoAttacak each frame 
+     */ 
     public void StartAttack() {
         lastAttackTime = Time.time;
 
@@ -263,6 +275,9 @@ public class PlayerController : MonoBehaviour {
     }
 
 
+    /*
+     * Checks for enemies around the player performing damage and handles points. Single frame attack
+     */ 
     public void DoAttack() {
         Collider[] hits = Physics.OverlapSphere(transform.position, attackRadius, attackLayers);
 
@@ -309,6 +324,9 @@ public class PlayerController : MonoBehaviour {
     }
 
 
+    /*
+     * Performs the items functionality for pickups on the player. Does not handle removing the item from the world
+     */ 
     public void PickUpItem(DroppedItem item) {
         switch(item.dropType) {
             case DroppedItem.EDropType.Points:
@@ -321,7 +339,7 @@ public class PlayerController : MonoBehaviour {
                 timesHit = Mathf.Max(0, timesHit - 1);
                 break;
             case DroppedItem.EDropType.Speed:
-                // TODO:
+                AddEffector(new Effector_Speed(), 5.0f);
                 break;
             case DroppedItem.EDropType.AttackRadius:
                 // TODO:
@@ -329,9 +347,13 @@ public class PlayerController : MonoBehaviour {
         }
 
         PlaySound(item.pickupSoundClip, 1.0f, 1.0f);
+        gameMode.OnItemPickup(item);
     }
 
 
+    /*
+     * Plays a sound on the players audio source. All sounds should go through here. Can also modulate pitch randomly.
+     */ 
     public void PlaySound(AudioClip clip, float minShift = 0.0f, float maxShift = 1.0f) {
         if(audioSource == null || clip == null || !gameMode.GetSoundEffectsOn()) {
             return;
@@ -354,7 +376,7 @@ public class PlayerController : MonoBehaviour {
         longestGameTime = playerState.longestGameTime;
     }
 
-
+    // Caches teh player state for saving, updating any transient values
     public void CacheCurrentState() {
         if(playerState == null) {
             return;
@@ -362,5 +384,59 @@ public class PlayerController : MonoBehaviour {
 
         playerState.highScore = highScore;
         playerState.longestGameTime = longestGameTime;
+    }
+
+    /*
+     * Adds the input effector type, with the input lifetime. if timelimit is 0.0f, the effector will 
+     * not be removed automatically, so it must remove itself.
+     * 
+     * returns true only if the effector was actually added to the list.
+     */ 
+    public bool AddEffector(PlayerEffector effector, float timelimit) {
+        // cehck that the effector is not already added
+        foreach(PlayerEffector currentEffector in effectors) {
+            if(currentEffector.GetType() == effector.GetType()) {
+                return false;
+            }
+        }
+
+        effector.lifeTime = timelimit;
+
+        effectors.Add(effector);
+        effector.OnApplied(this);
+        return true;
+    }
+
+    /*
+     * Removes the input effector, returns whether it was removed. If it returns false it 
+     * means that the input effector was not in the players list
+     */ 
+    public bool RemoveEffector(PlayerEffector effector) {
+        bool removed = effectors.Remove(effector);
+        if(removed) {
+            effector.OnRemoved(this);
+        }
+        
+        return removed;
+    }
+
+    private void UpdateEffectors() {
+        // track the indexes of any effectors that go inactive this frame
+        int[] markedInactive = new int[effectors.Count];
+        int numInactive = 0;
+
+        for(int i = 0; i < effectors.Count; i++) {
+            effectors[i].OnUpdate(this);
+
+            if(!effectors[i].bActive) {
+                markedInactive[numInactive] = i;
+                numInactive += 1;
+            }
+        }
+
+        // remove any inactive effectors
+        for(int i = 0; i < numInactive; i++) {
+            RemoveEffector(effectors[markedInactive[i]]);
+        }
     }
 }

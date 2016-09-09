@@ -191,6 +191,15 @@ public class EnemyController : MonoBehaviour {
     }
 
 
+    // Handles killing of the enemy in one place. Notifies game mode etc.
+    public void Kill() {
+        OnDeath();
+        gameMode.EnemyWasKilled(this);
+        gameMode.SpawnDroppedItem(this);
+        gameObject.SetActive(false);
+    }
+
+
     // Called when the player hits this enemy, returns whther or not it died
     public virtual bool HitByPlayer(PlayerController instigator) {
 
@@ -200,12 +209,7 @@ public class EnemyController : MonoBehaviour {
         }
 
         if(diesOneShot) {
-            OnDeath();
-            gameMode.EnemyWasKilled(this);
-            gameMode.SpawnDroppedItem(this);
-
-            gameObject.SetActive(false);
-
+            Kill();
             return true;
         }
         else {
@@ -216,11 +220,7 @@ public class EnemyController : MonoBehaviour {
             numHitsTaken += 1;
 
             if(numHitsTaken >= maxHits) {
-                OnDeath();
-                gameMode.EnemyWasKilled(this);
-                gameMode.SpawnDroppedItem(this);
-
-                gameObject.SetActive(false);
+                Kill();
                 return true;
             }
             else {

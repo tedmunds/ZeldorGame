@@ -12,19 +12,10 @@ public class GameMode : MonoBehaviour {
         public float delay;
     }
 
-    [System.Serializable]
-    public struct DifficultyLevel {
-        public float spawnRate;
-        public int maxEnemies;
-        public int minEnemies;
-        public int pointsThreshold;
-        public float speedModifier;
-        public bool bIsBossLevel;
-    }
-
     // Game mode is a singleton
     public static GameMode instance;
 
+    #region params
     [SerializeField] // Normal enemy types
     public List<EnemyController> enemyTypes;
 
@@ -33,31 +24,41 @@ public class GameMode : MonoBehaviour {
 
     [SerializeField]
     public List<DroppedItem> itemDrops;
-	
+
+    [SerializeField]
+    private float itemDropProb = 0.1f;
+
     [SerializeField]
     public GameObject field;
 
     [SerializeField]
-    public DifficultyLevel[] difficultyLevels;
+    public GameLevel[] levels;
+
+    [SerializeField]
+    private AnimationCurve levelFieldEasing;
+    #endregion
 
     private const float playerRespawnDelay = 1.0f;
 
     // Spawn constants
-    private const float minSpawnInterval = 3.0f;
     private const float maxSpawnInterval = 10.0f;
-
-    // Item drop constants
-    private const float itemDropProb = 0.1f;
 
     // Index into difficulty levels
     private int currentLevel;
+    private int levelDifficulty;
+
+    // the playing fields game objects
+    private GameField nextLevelField;
+    private GameField currentLevelField;
 
     private bool bIsPaused;
     private bool bPauseSpawning;
+    private bool bWaitingOnEnemys;
 
     private float lastSpawnTime;
 
     private List<EnemyController> spawnedEnemies;
+    private List<GameObject> droppedItems;
 
     private ObjectPool objectPool;
 
@@ -75,14 +76,15 @@ public class GameMode : MonoBehaviour {
     public void PauseGame() { bIsPaused = true; }
     public void UnPauseGame() { bIsPaused = false; }
     public bool GetSoundEffectsOn() { return bSoundEffectsOn; }
+    public PlayerController GetPlayer() { return player; }
 
-
-	void Start () {
+	void Awake () {
         instance = this;
 
         audioSource = GetComponent<AudioSource>();
 
         spawnedEnemies = new List<EnemyController>(15);
+        droppedItems = new List<GameObject>();
         objectPool = new ObjectPool();
         timerList = new List<TimedEvent>();
 
@@ -95,11 +97,16 @@ public class GameMode : MonoBehaviour {
         player.ApplyNewState(playerState);
 
         bPauseSpawning = false;
+        bWaitingOnEnemys = false;
+
+        currentLevel = 0;
+        levelDifficulty = 0;
+
+        StartFirstLevel();
 	}
 	
 	
 	void Update () {
-	    
         float timeSinceSpawn = Time.time - lastSpawnTime;
         float randomSpawnFactor = Random.value;
 
@@ -108,26 +115,36 @@ public class GameMode : MonoBehaviour {
 
         }
 
-        if(spawnedEnemies.Count < difficultyLevels[currentLevel].maxEnemies && !bPauseSpawning) {
+        GameLevel currentGameLevel = levels[currentLevel];
+        DifficultyLevel diffculty = currentGameLevel.difficultyLevels[levelDifficulty];
+
+        if(spawnedEnemies.Count < diffculty.maxEnemies && !bPauseSpawning) {
             // Mandatory spawn case
-            if(timeSinceSpawn > maxSpawnInterval || spawnedEnemies.Count < difficultyLevels[currentLevel].minEnemies) {
+            if(timeSinceSpawn > maxSpawnInterval || spawnedEnemies.Count < diffculty.minEnemies) {
                 SpawnEnemy();
             }
-            else if(difficultyLevels[currentLevel].spawnRate * Time.deltaTime > randomSpawnFactor) { // random chance of spawn happening at any given time
+            else if(diffculty.spawnRate * Time.deltaTime > randomSpawnFactor) { 
+                // random chance of spawn happening at any given time
                 SpawnEnemy();
             }
         }
 
         // Check for level update
-        if(player.GetPoints() > difficultyLevels[currentLevel].pointsThreshold && !bPauseSpawning) {
-            // Increment level, if its the end of the level set, go to the next set
-            currentLevel += 1;
-            if(currentLevel >= difficultyLevels.Length) {
+        if(player.GetPoints() > diffculty.pointsThreshold && !bPauseSpawning) {
+            // Increment difficulty level, if its the end of the level set, go to the next set
+            levelDifficulty += 1;
+            if(levelDifficulty >= currentGameLevel.difficultyLevels.Length) {
+                levelDifficulty = currentGameLevel.difficultyLevels.Length - 1;
                 EndOfLevelSet();
             }
             else {
                 UpdateNewDifficultyLevel();
             }
+        }
+
+        // if waiting on enemies, go to next level when spawned are all killed
+        if(bWaitingOnEnemys && spawnedEnemies.Count == 0) {
+            TransitionToNextLevel();
         }
 
         // Update timed functions
@@ -141,6 +158,13 @@ public class GameMode : MonoBehaviour {
 	}
 
 
+    void StartFirstLevel() {
+        nextLevelField = null;
+        currentLevelField = Instantiate<GameField>(levels[currentLevel].GameFieldPrototype);
+        currentLevelField.OnLevelStart(levels[currentLevel]);
+    }
+
+
     void OnApplicationQuit() {
         player.CacheCurrentState();
         PlayerState.SavePlayerState(SAVE_NAME, playerState);
@@ -148,22 +172,38 @@ public class GameMode : MonoBehaviour {
 
 
     private void EndOfLevelSet() {
-        currentLevel = 0;
         bPauseSpawning = true;
+        currentLevelField.OnLevelEnd();
+
+        // flag that indicates the game is just waiting for enemies to be killed before transitioning levels
+        bWaitingOnEnemys = true;
+
+#if UNITY_EDITOR
         Debug.Log(" End Of Level ");
+#endif
+    }
+
+    // Called to start the currently pending level, after any level transition
+    void BeginNextLevel() {
+        bPauseSpawning = false;
+        Destroy(currentLevelField);
+        currentLevelField = nextLevelField;
+        currentLevelField.OnLevelStart(levels[currentLevel]);
+        nextLevelField = null;
     }
 
 
     private void UpdateNewDifficultyLevel() {
         // Updates all the enemies speed and spawn a boss if its required
         foreach(EnemyController enemy in spawnedEnemies) {
-            enemy.SetSpeedModifier(difficultyLevels[currentLevel].speedModifier);
+            enemy.SetSpeedModifier(levels[currentLevel].difficultyLevels[levelDifficulty].speedModifier);
         }
 
-        if(difficultyLevels[currentLevel].bIsBossLevel) {
+        if(levels[currentLevel].difficultyLevels[levelDifficulty].bIsBossLevel) {
             SpawnEnemy(true);
         }
     }
+
 
     public void SpawnEnemy(bool bSpawnBoss = false) {
         if(enemyTypes.Count == 0) {
@@ -175,8 +215,8 @@ public class GameMode : MonoBehaviour {
 
         Vector3 spawnLoc = Vector3.zero;
 
-        float xWidth = field.transform.localScale.x / 2.0f - 1.0f;
-        float zWidth = field.transform.localScale.z / 2.0f - 1.0f;
+        float xWidth = currentLevelField.transform.localScale.x / 2.0f - 1.0f;
+        float zWidth = currentLevelField.transform.localScale.z / 2.0f - 1.0f;
 
         spawnLoc.x = Random.Range(-xWidth, xWidth);
         spawnLoc.z = Random.Range(-zWidth, zWidth);
@@ -206,7 +246,7 @@ public class GameMode : MonoBehaviour {
         // Spawn Notifications
         EnemyController enemy = spawned.GetComponent<EnemyController>();
         enemy.OnSpawn();
-        enemy.SetSpeedModifier(difficultyLevels[currentLevel].speedModifier);
+        enemy.SetSpeedModifier(levels[currentLevel].difficultyLevels[levelDifficulty].speedModifier);
 
         spawnedEnemies.Add(enemy);
 
@@ -223,7 +263,7 @@ public class GameMode : MonoBehaviour {
         // Spawn Notifications
         EnemyController enemy = spawned.GetComponent<EnemyController>();
         enemy.OnSpawn();
-        enemy.SetSpeedModifier(difficultyLevels[currentLevel].speedModifier);
+        enemy.SetSpeedModifier(levels[currentLevel].difficultyLevels[levelDifficulty].speedModifier);
 
         spawnedEnemies.Add(enemy);
 
@@ -247,7 +287,17 @@ public class GameMode : MonoBehaviour {
                                                      dropObj.transform.localScale.y,
                                                      dropper.transform.position.z);
             dropObj.SetActive(true);
+
+            // also keep track of the item so it can be removed on level transition
+            droppedItems.Add(dropObj);
         }
+    }
+
+    /*
+     * Called by player when they pickup an item to notify the game mode
+     */ 
+    public void OnItemPickup(DroppedItem item) {
+        droppedItems.Remove(item.gameObject);
     }
 
 
@@ -255,10 +305,6 @@ public class GameMode : MonoBehaviour {
     public void EnemyWasKilled(EnemyController victim) {
         if(spawnedEnemies.Contains(victim)) {
             spawnedEnemies.Remove(victim);
-
-            //GameObject effect = objectPool.GetInactiveGameObjectInstance(bloodEffectPrototype);
-            //effect.transform.position = victim.transform.position;
-            //effect.SetActive(true);
 
             SpawnParticleSystem(victim.deathEffectPrototype, victim.transform.position);
 
@@ -328,6 +374,67 @@ public class GameMode : MonoBehaviour {
 
         audioSource.pitch = Random.Range(minShift, maxShift);
         audioSource.PlayOneShot(clip);
+    }
+
+    public GameObject SpawnObjectFast(GameObject prototype, Vector3 position) {
+        GameObject obj = objectPool.GetInactiveGameObjectInstance(prototype);
+        obj.transform.position = position;
+        obj.SetActive(true);
+        return obj;
+    }
+
+
+    /// <summary>
+    /// Kills all of the currenyl spawned enemies
+    /// </summary>
+    public void KillAllEnemies() {
+        for(int i = spawnedEnemies.Count - 1; i >= 0; i--) {
+            spawnedEnemies[i].Kill();
+        }
+    }
+
+
+    public void TransitionToNextLevel() {
+        Vector3 spawnLocation = new Vector3(-20.0f, -5.0f, 0.0f);
+        float levelTransitionDelay = 1.0f;
+
+        levelDifficulty = 0;
+        currentLevel += 1;
+        bWaitingOnEnemys = false;
+
+        if(currentLevel >= levels.Length) {
+            currentLevel = 0;
+            Debug.LogWarning("Reached last level! Going back to the first one.");
+        }
+        else {
+            Debug.Log("Going to next level!");
+        }
+        
+
+        // create the new level field
+        nextLevelField = Instantiate<GameField>(levels[currentLevel].GameFieldPrototype);
+        nextLevelField.transform.position = spawnLocation;
+
+        // clean up all remaining items
+        for(int i = droppedItems.Count - 1; i >= 0; i--) {
+            GameObject obj = droppedItems[i];
+            droppedItems.RemoveAt(i);
+            obj.SetActive(false);
+        }
+
+        SetTimer(SlideOutLevels, levelTransitionDelay);
+    }
+
+    // Slides in the new level and out the old level
+    public void SlideOutLevels() {
+        Vector3 exitLocation = new Vector3(20.0f, -5.0f, 0.0f);
+        float slideTime = 1.0f;
+
+        currentLevelField.SlideTo(exitLocation, slideTime, levelFieldEasing);
+        nextLevelField.SlideTo(new Vector3(0.0f, -5.0f, 0.0f), slideTime, levelFieldEasing);
+
+        // and finally set the level to start after the new level has slid into place
+        SetTimer(BeginNextLevel, slideTime + 1.0f);
     }
 
 }
